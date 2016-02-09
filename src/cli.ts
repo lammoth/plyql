@@ -127,12 +127,15 @@ function parseArgs() {
   );
 }
 
-export function run() {
-  var parsed = parseArgs();
+export function run(command?) {
+  var parsed = ((command) ? command : parseArgs());
+  
 
-  if (parsed.argv.original.length === 0 || parsed['help']) {
-    printUsage();
-    return;
+  if (!command) {
+    if (parsed.argv.original.length === 0 || parsed['help']) {
+      printUsage();
+      return;
+    }
   }
 
   if (parsed['version']) {
@@ -286,48 +289,56 @@ export function run() {
   });
 
   if (sqlParse.verb === 'DESCRIBE') {
-    dataset.introspect().then((introspectedDataset) => {
-      console.log(JSON.stringify(introspectedDataset.toJS().attributes, null, 2));
-    }).done()
+    if (!command) {
+      dataset.introspect().then((introspectedDataset) => {
+        console.log(JSON.stringify(introspectedDataset.toJS().attributes, null, 2));
+      }).done()
+    } else {
+      return dataset.introspect();
+    }
 
   } else if (sqlParse.verb === 'SELECT') {
     var context: Datum = {};
     context[dataName] = dataset;
 
-    expression.compute(context)
-      .then(
-        (data: Dataset) => {
-          var outputStr: string;
-          switch (output) {
-            case 'json':
-              outputStr = JSON.stringify(data, null, 2);
-              break;
+    if (!command) {
+      expression.compute(context)
+        .then(
+          (data: Dataset) => {
+            var outputStr: string;
+            switch (output) {
+              case 'json':
+                outputStr = JSON.stringify(data, null, 2);
+                break;
 
-            case 'csv':
-              data = Dataset.fromJS(data.toJS()); // Temp hack
-              outputStr = data.toCSV();
-              break;
+              case 'csv':
+                data = Dataset.fromJS(data.toJS()); // Temp hack
+                outputStr = data.toCSV();
+                break;
 
-            case 'tsv':
-              data = Dataset.fromJS(data.toJS()); // Temp hack
-              outputStr = data.toTSV();
-              break;
+              case 'tsv':
+                data = Dataset.fromJS(data.toJS()); // Temp hack
+                outputStr = data.toTSV();
+                break;
 
-            case 'flat':
-              data = Dataset.fromJS(data.toJS()); // Temp hack
-              outputStr = JSON.stringify(data.flatten(), null, 2);
-              break;
+              case 'flat':
+                data = Dataset.fromJS(data.toJS()); // Temp hack
+                outputStr = JSON.stringify(data.flatten(), null, 2);
+                break;
 
-            default:
-              outputStr = 'Unknown output type';
-              break;
+              default:
+                outputStr = 'Unknown output type';
+                break;
+            }
+            console.log(outputStr);
+          },
+          (err: Error) => {
+            console.log(`There was an error getting the data: ${err.message}`);
           }
-          console.log(outputStr);
-        },
-        (err: Error) => {
-          console.log(`There was an error getting the data: ${err.message}`);
-        }
-      ).done()
+        ).done()
+    } else {
+      return expression.compute(context);
+    }
 
   } else {
     console.log('Unsupported verb');
